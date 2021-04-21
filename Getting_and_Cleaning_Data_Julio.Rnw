@@ -1,0 +1,119 @@
+\documentclass{article}
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+
+<<>>=
+library(data.table)
+fileurl = 'https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip'
+
+if (!file.exists('./UCI HAR Dataset.zip')){
+  download.file(fileurl,'./UCI HAR Dataset.zip', mode = 'wb')
+  unzip("UCI HAR Dataset.zip", exdir = getwd())
+}
+@
+
+Read and Convert Data
+1- Data is read file by file
+2- Data is converted into a single data frame
+
+<<>>=
+
+features <- read.csv('./UCI HAR Dataset/features.txt', 
+            header = FALSE, sep = ' ')
+features <- as.character(features[,2])
+
+data.train.x <- read.table('./UCI HAR Dataset/train/X_train.txt')
+
+data.train.activity <- read.csv('./UCI HAR Dataset/train/y_train.txt', 
+                    header = FALSE, sep = ' ')
+
+data.train.subject <- read.csv('./UCI HAR Dataset/train/subject_train.txt',
+                    header = FALSE, sep = ' ')
+
+data.train <-  data.frame(data.train.subject, 
+                          data.train.activity, data.train.x)
+
+names(data.train) <- c(c('subject', 'activity'), features)
+
+data.test.x <- read.table('./UCI HAR Dataset/test/X_test.txt')
+
+
+data.test.activity <- read.csv('./UCI HAR Dataset/test/y_test.txt', 
+                      header = FALSE, sep = ' ')
+
+data.test.subject <- read.csv('./UCI HAR Dataset/test/subject_test.txt', 
+                      header = FALSE, sep = ' ')
+
+
+data.test <-  data.frame(data.test.subject, data.test.activity, data.test.x)
+
+names(data.test) <- c(c('subject', 'activity'), features)
+@
+
+
+1. The low function will combine the training and test sets into a data set called dt.all
+
+
+<<>>=
+dt.all <- rbind(data.train, data.test)
+@
+
+2. Now, some summary measures like the mean and the standard deviation are obtained.
+
+<<>>=
+mean_std.select <- grep('mean|std', features)
+
+data.sub <- dt.all[,c(1,2,mean_std.select + 2)]
+@
+
+3.Next, descriptive activity names will be used to name the activities in the data set. 
+
+<<>>=
+activity.labels <- read.table('./UCI HAR Dataset/activity_labels.txt', 
+                              header = FALSE)
+
+activity.labels <- as.character(activity.labels[,2])
+
+data.sub$activity <- activity.labels[data.sub$activity]
+@
+
+4. Subsequently, the data set with descriptive variable names will be appropriately labeled.
+
+In this way, names in the data set will be replaced with activity label names
+
+<<>>=
+name.new <- names(data.sub)
+name.new <- gsub("[(][)]", "", name.new)
+name.new <- gsub("^t", "TimeDomain_", name.new)
+name.new <- gsub("^f", "FrequencyDomain_", name.new)
+name.new <- gsub("Acc", "Accelerometer", name.new)
+name.new <- gsub("Gyro", "Gyroscope", name.new)
+name.new <- gsub("Mag", "Magnitude", name.new)
+name.new <- gsub("-mean-", "_Mean_", name.new)
+name.new <- gsub("-std-", "_StandardDeviation_", name.new)
+name.new <- gsub("-", "_", name.new)
+names(data.sub) <- name.new
+
+@
+
+5. And finally, based on the data set obtained in step 4, a second independent and organized data set will be created with the average of each variable for each activity and each subject.
+
+Data organized as output as file FinalData.txt
+
+<<>>=
+FinalData <- aggregate(data.sub[,3:81],
+              by = list(activity = data.sub$activity, 
+              subject = data.sub$subject),FUN = mean)
+
+write.table(x = FinalData, file = "FinalData.txt", row.names = FALSE)
+@
+
+
+
+
+
+
+
+
+\end{document}
